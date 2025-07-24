@@ -1,0 +1,168 @@
+---
+title: "DATA SoSe 2025 Tag 3"
+author: "Ahrabhi Kathirgamalingam"
+output: html_document
+date: "2025-07-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Daten und Packages importieren
+
+1. Packages installieren und/ oder aktivieren: rio und tidyverse
+2. Import der ALLBUS 2018 Daten
+
+
+
+```{r packages und dataframe laden, message=FALSE, warning=FALSE}
+setwd("/Users/ahrabhi.kathirgamalingam/Documents/03_LEHRE/HHU/DATA HHU/SoSe_2025/data")
+library(rio)
+library(tidyverse)
+
+allbus <- import("ALLBUS2018Komplett.sav")
+```
+
+3. In einem neuem Dataframe werden die Variablen pt01 bis pt20 gespeichert. Nutzt dafür den Befehl select() und recherchiert, wie das funktioniert
+
+```{r subset erstellen, echo=FALSE}
+allbus_sub <- allbus %>%
+  select(pt01:pt20)
+```
+
+4. Um welche Variablen handelt es sich? (s. im Variablen Report nach und kommentiert euer Rmd)
+
+
+## Maße der Verteilung erstellen
+Berechnet Mittelwert und Standardabweichung für die Variablen pt01, pt02 und pt03, in Textform reporten! Beispiel: pt01 hat einen M=X und SD=Y.
+
+
+```{r}
+attributes(allbus$pt01)
+attributes(allbus$pt02)
+attributes(allbus$pt03)
+
+mean(allbus_sub$pt01, na.rm = TRUE)
+sd(allbus_sub$pt01, na.rm =TRUE)
+
+mean(allbus_sub$pt02, na.rm = TRUE)
+sd(allbus_sub$pt02, na.rm =TRUE)
+
+mean(allbus_sub$pt03, na.rm = TRUE)
+sd(allbus_sub$pt03, na.rm =TRUE)
+```
+Das Vertrauen in das Gesundheitswesen wurde im Durchschnitt mit M = 4.63 bewertet (SD = 1.40).
+Für das Bundesverfassungsgericht liegt der Mittelwert des Vertrauens bei M = 5.09 (SD = 1.48).
+Das Vertrauen in den Bundestag weist einen Mittelwert von M = 4.06 auf, bei einer Standardabweichung von SD = 1.45.
+
+```{r}
+attributes(allbus_sub$pt03)
+table(allbus_sub$pt03)
+prop.table(table(allbus_sub$pt03))
+
+```
+
+
+```{r}
+
+ggplot(allbus, aes(x = as.factor(pt03))) + 
+  geom_bar() +
+  labs(
+    title = "Vertrauen in den Bundestag",
+    subtitle = "Häufigkeitsverteilung der Antworten (pt03)",
+    x = "Vertrauensstufe (1 = gar kein Vertrauen, 7 = großes Vertrauen)",
+    y = "Anzahl der Befragten"
+  )
+
+```
+```{r}
+allbus$westost <- factor(allbus$eastwest, labels = c("Westdeutschland", "Ostdeutschland"))
+
+allbus <- allbus %>%
+  mutate(schulabschluss = case_when(educ == 2 ~ "Hauptschulabschluss",         
+                                    educ == 3 ~ "Mittlere Reife",           
+                                    educ %in% c(4,5) ~ "(Fach-)Abitur"))
+
+```
+
+```{r}
+table(allbus$educ)
+table(allbus$schulabschluss)
+```
+
+```{r}
+tabelle <- table(allbus$westost, allbus$schulabschluss)
+print(tabelle)
+```
+
+```{r}
+tabelle_sum <- addmargins(tabelle) #summenwerte
+print(tabelle_sum)
+```
+```{r}
+spaltenprozente <- round(100*prop.table(tabelle, 2),2)
+spaltenprozente
+```
+```{r eval = FALSE}
+install.packages("gmodels")
+library(gmodels)
+CrossTable(allbus$westost, allbus$schulabschluss, format="SPSS")
+
+```
+```{r}
+tabelle <- table(allbus$westost, allbus$schulabschluss)
+chisq.test(tabelle)
+
+```
+```{r}
+#install.packages("vcd")
+library(vcd)
+
+assocstats(tabelle)
+```
+```{r}
+table(allbus$pt03, useNA = "ifany")
+
+table(allbus$pt15, useNA = "ifany")
+
+table(allbus$pt03, allbus$pt15)
+```
+
+
+```{r}
+ggplot(allbus, aes(x= pt15,
+y = pt03)) +
+geom_point(position = "jitter", alpha = 0.3) +
+labs(x = "Vertrauen in politische Parteien",
+y = "Vertrauen in den Bundestag") +
+theme_minimal()
+```
+```{r}
+cor.test(allbus$pt15,
+allbus$pt03)
+```
+- **Stärke des Zusammenhangs:** Wie stark eine Variable mit der anderen Variable zusammenhängt, wird in der Höhe des Koefizienten angegeben. Je höher dieser Wert ist, desto stäker wird eine Variable durch die andere Variable bestimmt. Der Wert kann zwischen `0` und `+-1` liegen. Mit `0.58` ist der Zusammenhang zwischen den beiden Variablen hier relativ hoch. 
+- **Richtung des Zusammenhangs:** Hier kommt es auf das Vorzeichen des Koeffizienten an. Bei einem `+` sprechen wir von einem positiven Zusammenhang, während wir bei einem `-` von einem negativen Zusammenhang sprechen. In unserem Beispiel ist der Zusammenhang positiv: Je mehr eine Person in politische Parteien vertraut, **desto mehr** vertraut sie in den Bundestag. Wenn der Zusammenhang negativ wäre, würden wir die Richtung des Zusammenhangs so beschreiben: Je mehr eine Person in politische Parteien vertraut, **desto weniger** vertraut sie in den Bundestag.
+- **Signifikanztest:** Hier wird überprüft, ob wir auch in der Grundgesamtheit von einem Zusammenhang zwischen den beiden Variablen ausgehen können. Wenn der `p-value` kleiner als `0.05` ist, können wir davon ausgehen, dass ein Zusammenhang zwischen den beiden Variablen auch in der Grundgesamtheit vorliegt. Dies ist in dem vorliegenden Beispiel gegeben. 
+
+Alles in allem scheint unsere Analyse die Hypothese, dass Personen, die politischen Parteien vertrauen, auch dem Bundestag vertrauen, Unterstützung in den Daten zu finden. 
+
+```{r}
+ cor.test(allbus$pt15,
+	allbus$pt03,
+	method = "spearman")
+```
+```{r}
+ cor.test(allbus$pt15,
+	allbus$pt03,
+	method = "kendall")
+```
+```{r}
+vertrauen <- allbus %>%
+  select(pt03:pt15)
+
+cor(vertrauen, use = "pairwise.complete.obs", method = "pearson")
+```
+
+---
