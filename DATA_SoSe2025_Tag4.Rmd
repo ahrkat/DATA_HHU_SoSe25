@@ -1,0 +1,171 @@
+---
+title: "DATA SoSe 2025 Tag 3"
+author: "Ahrabhi Kathirgamalingam"
+output: html_document
+date: "2025-07-24"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Daten und Packages importieren
+
+1. Packages installieren und/ oder aktivieren: rio und tidyverse
+2. Import der ALLBUS 2018 Daten
+
+
+```{r packages und dataframe laden, message=FALSE, warning=FALSE}
+setwd("/Users/ahrabhi.kathirgamalingam/Documents/03_LEHRE/HHU/DATA HHU/SoSe_2025/data")
+#install.packages("tidyverse")
+library(rio)
+library(tidyverse)
+
+allbus <- import("ALLBUS2018Komplett.sav")
+```
+
+
+## Indexbildung
+
+In einem neuem Dataframe werden die Variablen px01 bis px10 gespeichert. 
+
+
+```{r}
+allbus_sub <- allbus %>%
+select(px01:px10)
+
+cor(allbus_sub,
+	use = "pairwise.complete.obs",
+	method = "pearson")
+
+```
+
+```{r Cronbachs Alpha}
+#install.packages("psych")
+library(psych)
+
+alpha(allbus_sub) #Befehl, um Cronbach's Alpha zu berechnen
+
+```
+```{r Mittelwertindex base}
+allbus$meanext <- rowMeans(allbus_sub, na.rm = FALSE)
+mean(allbus$meanext, na.rm = TRUE)
+
+```
+
+
+```{r Mittelwertindex tidyverse}
+allbus <- allbus %>%
+  mutate(meantidy = rowMeans(across(px01:px10), na.rm = TRUE))
+
+mean(allbus$meantidy, na.rm =TRUE)
+```
+```{r Additiver Index base}
+allbus$addext <- rowSums(allbus_sub, na.rm = FALSE)
+mean(allbus$addext, na.rm = TRUE)
+
+```
+```{r Additiver Index tidyverse}
+allbus <- allbus %>%
+  mutate(addtidy = rowSums(across(px01:px10), na.rm = TRUE))
+
+mean(allbus$addtidy, na.rm =TRUE)
+```
+```{r Mittelwerte unserer neuen Variablen}
+mean(allbus$meantidy, na.rm =TRUE)
+mean(allbus$addtidy, na.rm =TRUE)
+```
+
+## Gruppenunterschiede / t-Test
+
+```{r Variablen vorbereiten t-Test}
+attributes(allbus$eastwest)
+table(allbus$eastwest)
+allbus$westost <- factor(allbus$eastwest, labels = c("Westdeutschland", "Ostdeutschland"))
+table(allbus$westost)
+
+tapply(allbus$pt20, allbus$westost, mean, na.rm=TRUE)
+```
+
+
+```{r Levene test}
+#install.packages("car")
+library(car) # das Paket "car" wird aufgerufen, da der Levene-Test in diesem Paket implementiert ist
+class(allbus$pt20) # die abhängige Variable muss als numerischer Vektor vorliegen 
+leveneTest(allbus$pt20, allbus$westost)
+```
+
+
+```{r t-Test bei Varianzheterogenität}
+t.test(allbus$pt20 ~ allbus$westost, na.rm=TRUE)
+```
+
+Falsch, nur zum testen:
+```{r t-Test bei Varianzhomogenität}
+t.test(allbus$pt20 ~ allbus$westost, na.rm=TRUE, var.equal = TRUE)
+
+```
+
+```{r Übung mit gender und pt03}
+attributes(allbus$sex)
+table(allbus$sex)
+allbus$gender <- factor(allbus$sex, labels = c("Mann", "Frau"))
+table(allbus$gender)
+
+tapply(allbus$pt03, allbus$gender, mean, na.rm=TRUE)
+```
+```{r}
+class(allbus$pt03) # die abhängige Variable muss als numerischer Vektor vorliegen 
+leveneTest(allbus$pt20, allbus$gender)
+```
+```{r}
+t.test(allbus$pt03 ~ allbus$gender, na.rm=TRUE)
+
+```
+
+## (Multiple) Lineare Regression
+
+```{r lineare regression}
+
+model <- lm(pt12 ~ age, data = allbus)
+summary(model)
+
+```
+```{r lineare regression mit dummy}
+table(allbus$westost)
+
+model2 <- lm(pt12 ~ westost, data = allbus)
+summary(model2)
+
+```
+```{r multiple lineare regression}
+
+model3 <- lm(pt12 ~ age + px01 + px02 + px03 + westost, data = allbus)
+summary(model3) 
+```
+```{r beta koeffizienten berechnen}
+#install.packages("lm.beta")
+library(lm.beta)
+
+lm.beta(model3)
+```
+
+```{r Multikollinearität testen}
+vif(model3)
+```
+
+```{r Verteilungen von Residuen anschauen}
+plot(model3)
+```
+```{r Breusch-Pagan Test}
+#install.packages("lmtest")
+
+library(lmtest)
+bptest(model)
+```
+```{r Übung}
+model4 <- lm(px03 ~ pt01 + pt02 + pt03 + pt04 + pt08 + pt09 + pt10 + age, data = allbus)
+summary(model4)
+
+lm.beta(model4)
+```
